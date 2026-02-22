@@ -5,3 +5,4 @@ target/
 *.war
 *.iml
 .idea/
+.DS_Store
