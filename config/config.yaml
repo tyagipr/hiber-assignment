@@ -1,0 +1,12 @@
+# External config for testing (config/config.yaml)
+# Used when running from project root - enables file watching and hot reload
+# Edit this file and save to test dynamic config reload without restarting the app
+
+pressure:
+  multiplier: 10.0
+
+output:
+  showTimestamp: true
+  showPressure: true
+  showTemperature: true
+  showBattery: true

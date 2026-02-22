@@ -12,14 +12,10 @@ A command-line application that parses sensor payloads represented as HEX string
 ### Build
 
 ```bash
-mvn clean compile
+mvn clean install
 ```
 
-To create a runnable JAR:
-
-```bash
-mvn clean package
-```
+This compiles, runs tests, creates the runnable JAR, and installs to the local Maven repository.
 
 ### Run
 
@@ -46,9 +42,9 @@ Once running, the application streams HEX input from stdin. Enter one HEX messag
 
 ### Assumptions
 
-- **Payload format:** Fixed 13-byte binary layout (little-endian): 4-byte timestamp (u4), 4-byte pressure (float), 4-byte temperature (float), 1-byte battery (u1). Defined in `pressure_parser.ksy`.
+- **Payload format:** Fixed 13-byte binary layout : 4-byte timestamp (u4), 4-byte pressure (float), 4-byte temperature (float), 1-byte battery (u1). Defined in `pressure_parser.ksy`.
 - **HEX input:** One message per line; whitespace is stripped. Input is case-insensitive.
-- **Config:** YAML format in `config.yaml`. The app searches: current dir, `config/`, `target/classes/`, `src/main/resources/`, or path from `-Dconfig.file=...`.
+- **Config:** YAML format in `config.yaml`. The app searches: current dir, `config/`, `target/classes/`, `src/main/resources/`.
 - **File watching:** Only active when config is loaded from a real filesystem path (e.g. during development). No watching when config is read from inside a JAR.
 
 ### Trade-offs
@@ -64,15 +60,18 @@ Once running, the application streams HEX input from stdin. Enter one HEX messag
 - **Invalid payload length:** Shorter or longer than 13 bytes may cause parse errors from Kaitai; these are caught and reported per line.
 - **Config reload failure:** If the config file becomes invalid (e.g. bad YAML), the last valid config is reused instead of failing the application.
 - **Empty lines:** Ignored. Empty or whitespace-only input is skipped.
-- **Config file not found:** `DynamicConfig.create()` throws `IllegalStateException` with search paths listed.
+- **Config file not found:** Falls back to bundled `config.yaml` from classpath (no file watching in that case).
 
 ---
 
 ## Configuration
 
-Configuration is loaded from `config.yaml`. The location for `config.yaml` is  `src/main/resources/`.
+Configuration uses a **hybrid** loading strategy:
 
-The config file is watched for changes and reloaded automatically.
+1. **External file first** (in order): `./config.yaml`, `config/config.yaml`, `target/classes/config.yaml`, `src/main/resources/config.yaml`
+2. **Classpath fallback**: If no external file exists, loads bundled `config.yaml` from inside the JAR
+
+When an external config file is used, it is watched for changes and reloaded automatically (no restart needed). When using the classpath fallback (e.g. `java -jar app.jar` alone), file watching is not available.
 
 ### Config options
 
