@@ -95,7 +95,7 @@ Once running, the application streams HEX input from stdin. Enter one HEX messag
 
 ## Configuration
 
-A single external `config.yaml` is used and searched for (in order) in: `./config.yaml`. The file is watched for changes and reloaded automatically (no restart needed).
+A single external `config.yaml` is used and searched in: `./config.yaml`. The file is watched for changes and reloaded automatically (no restart needed).
 
 ### Config options
 
