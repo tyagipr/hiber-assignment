@@ -57,14 +57,6 @@
     </dependencies>
 
     <build>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-                <excludes>
-                    <exclude>config.yaml</exclude>
-                </excludes>
-            </resource>
-        </resources>
         <pluginManagement>
             <plugins>
                 <!-- Tell m2e/Eclipse how to handle Kaitai plugin execution -->
