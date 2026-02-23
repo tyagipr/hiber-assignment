@@ -15,7 +15,7 @@ A command-line application that parses sensor payloads represented as HEX string
 mvn clean install
 ```
 
-This compiles, runs tests, creates the runnable JAR, and installs to the local Maven repository.
+This compiles, creates the runnable JAR, and installs to the local Maven repository.
 
 ### Run
 
@@ -27,7 +27,7 @@ mvn exec:java
 
 **Option 2: From IDE**
 
-Run the `com.hiber.assignment.Main` class. Set the project root as the working directory so `config.yaml` can be found.
+Run the `com.hiber.assignment.Main` class.
 
 ### Usage
 
