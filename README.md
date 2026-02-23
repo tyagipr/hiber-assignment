@@ -1,4 +1,4 @@
-# Pressure Parser
+# Message Parser
 
 A command-line application that parses sensor payloads represented as HEX strings into structured, human-readable output using Kaitai Struct. Supports streaming input and dynamic configuration reload.
 
