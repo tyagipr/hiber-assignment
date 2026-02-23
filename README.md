@@ -79,7 +79,6 @@ Once running, the application streams HEX input from stdin. Enter one HEX messag
 
 ### Trade-offs
 
-- **Typesafe Config + YAML:** Config is parsed with SnakeYAML and converted to Typesafe Config for consistent typed access. This avoids adding another config API but introduces a small conversion step.
 - **Lazy reload on access:** Config is reloaded when `getConfig()` is called and the file’s `lastModified` has changed, instead of reacting immediately in the watcher thread. This simplifies threading and avoids locks, at the cost of a short delay until the next read.
 - **No-op watcher fallback:** If the watcher cannot start (e.g. missing parent dir), config still loads; file watching is optional.
 - **Streaming vs. batch:** The app processes line-by-line from stdin. Large inputs are streamed instead of loading everything into memory.
