@@ -38,14 +38,44 @@ Once running, the application streams HEX input from stdin. Enter one HEX messag
 
 ---
 
+## High-level design
+
+```
+  stdin (HEX lines)     config.yaml (external)
+         │                        │
+         ▼                        ▼
+  ┌──────────────┐         ┌──────────────┐
+  │    Main      │◄────────│ DynamicConfig│
+  │  (orchestr.) │         │ + file watch │
+  └──────┬───────┘         └──────────────┘
+         │
+         ▼
+  ┌──────────────┐         ┌──────────────┐
+  │ PressureMsg  │────────►│ PressureData │
+  │   Parser     │         │   (model)    │
+  └──────┬───────┘         └──────┬───────┘
+         │                        │
+         │    Kaitai (generated)   │
+         └────────┬───────────────┘
+                  ▼
+           JSON to stdout
+```
+
+- **Main:** Reads stdin line-by-line, delegates parsing to `PressureMessageParser`, applies config (multiplier, output flags), and writes one JSON object per line to stdout. Registers a shutdown hook to close the config watcher.
+- **PressureMessageParser:** Decodes HEX to bytes and uses the Kaitai-generated `PressureParser` to interpret the fixed 13-byte layout; returns a `PressureData` record (timestamp, pressure, temperature, battery).
+- **DynamicConfig:** Loads a single external `config.yaml` from a fixed search order, caches it as Typesafe `Config`, and uses a file watcher to detect changes. Reload is lazy (on next `getConfig()` after a change).
+- **Model:** `PressureData` is a simple record; no business logic. Output shape is built in Main from config flags and written with Jackson.
+
+---
+
 ## Technical Choices
 
 ### Assumptions
 
 - **Payload format:** Fixed 13-byte binary layout : 4-byte timestamp (u4), 4-byte pressure (float), 4-byte temperature (float), 1-byte battery (u1). Defined in `pressure_parser.ksy`.
 - **HEX input:** One message per line; whitespace is stripped. Input is case-insensitive.
-- **Config:** YAML format in `config.yaml`. The app searches: current dir, `config/`, `target/classes/`, `src/main/resources/`.
-- **File watching:** Only active when config is loaded from a real filesystem path (e.g. during development). No watching when config is read from inside a JAR.
+- **Config:** YAML format in `config.yaml`.
+- **File watching:** Config is always loaded from an external file, so changes are watched and reloaded automatically.
 
 ### Trade-offs
 
@@ -60,18 +90,13 @@ Once running, the application streams HEX input from stdin. Enter one HEX messag
 - **Invalid payload length:** Shorter or longer than 13 bytes may cause parse errors from Kaitai; these are caught and reported per line.
 - **Config reload failure:** If the config file becomes invalid (e.g. bad YAML), the last valid config is reused instead of failing the application.
 - **Empty lines:** Ignored. Empty or whitespace-only input is skipped.
-- **Config file not found:** Falls back to bundled `config.yaml` from classpath (no file watching in that case).
+- **Config file not found:** Application fails at startup with a clear message; config must be placed in one of the search paths.
 
 ---
 
 ## Configuration
 
-Configuration uses a **hybrid** loading strategy:
-
-1. **External file first** (in order): `./config.yaml`, `config/config.yaml`, `target/classes/config.yaml`, `src/main/resources/config.yaml`
-2. **Classpath fallback**: If no external file exists, loads bundled `config.yaml` from inside the JAR
-
-When an external config file is used, it is watched for changes and reloaded automatically (no restart needed). When using the classpath fallback (e.g. `java -jar app.jar` alone), file watching is not available.
+A single external `config.yaml` is used and searched for (in order) in: `./config.yaml`. The file is watched for changes and reloaded automatically (no restart needed).
 
 ### Config options
 
@@ -100,7 +125,6 @@ src/main/java/com/hiber/assignment/
     └── PressureParser.java
 
 src/main/resources/
-├── config.yaml               # Dynamic configuration
 └── kaitai/
     └── pressure_parser.ksy   # Kaitai Struct definition
 ```

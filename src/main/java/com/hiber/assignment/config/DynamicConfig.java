@@ -14,16 +14,12 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Loads configuration using a hybrid approach:
- * 1. Tries external file paths first (enables file watching and hot reload)
- * 2. Falls back to classpath (config.yaml inside JAR) when no external file found
- *
- * File watching and hot reload only work when using an external config file.
+ * Loads configuration from an external config.yaml.
+ * File watching and hot reload are enabled when an yaml file is used.
  */
 public class DynamicConfig implements java.io.Closeable {
 
     private static final Logger logger = LoggerFactory.getLogger(DynamicConfig.class);
-    private static final String CONFIG_RESOURCE = "config.yaml";
 
     private final File configFile;
     private final ConfigFileWatcher fileWatcher;
@@ -33,14 +29,9 @@ public class DynamicConfig implements java.io.Closeable {
     public DynamicConfig(File configFile, ConfigFileWatcher fileWatcher) {
         this.configFile = configFile;
         this.fileWatcher = fileWatcher;
-
-        if (configFile != null && fileWatcher != null) {
-            this.cachedConfig.set(loadFromFile());
-            this.lastModified = configFile.lastModified();
-            this.fileWatcher.start(this::onFileChanged);
-        } else {
-            this.cachedConfig.set(loadFromClasspath());
-        }
+        this.cachedConfig.set(loadFromFile());
+        this.lastModified = configFile.lastModified();
+        this.fileWatcher.start(this::onFileChanged);
     }
 
     /**
@@ -55,9 +46,7 @@ public class DynamicConfig implements java.io.Closeable {
     }
 
     /**
-     * Creates DynamicConfig using hybrid loading:
-     * 1. Searches external paths: ., config/, target/classes/, src/main/resources/
-     * 2. Falls back to classpath (config.yaml inside JAR)
+     * Creates DynamicConfig by searching for config.yaml.
      */
     public static DynamicConfig create() {
         for (String[] pair : new String[][]{{".", "config.yaml"}, {"config", "config.yaml"}, {"target/classes", "config.yaml"}, {"src/main/resources", "config.yaml"}}) {
@@ -67,17 +56,15 @@ public class DynamicConfig implements java.io.Closeable {
                 return fromPath(pair[0], pair[1]);
             }
         }
-        logger.info("No external config found, loading from classpath (bundled in JAR)");
-        return new DynamicConfig(null, null);
+        throw new IllegalStateException(
+                "config.yaml not found");
     }
 
     public Config getConfig() {
-        if (configFile != null) {
-            long currentLastModified = configFile.lastModified();
-            if (currentLastModified > lastModified) {
-                logger.info("Config file changed, reloading...");
-                reloadConfig();
-            }
+        long currentLastModified = configFile.lastModified();
+        if (currentLastModified > lastModified) {
+            logger.info("Config file changed, reloading...");
+            reloadConfig();
         }
         return cachedConfig.get();
     }
@@ -104,31 +91,13 @@ public class DynamicConfig implements java.io.Closeable {
         }
     }
 
-    private Config loadFromClasspath() {
-        try (InputStream in = getClass().getClassLoader().getResourceAsStream(CONFIG_RESOURCE)) {
-            if (in == null) {
-                logger.warn("config.yaml not found on classpath, using empty config");
-                return ConfigFactory.empty();
-            }
-            Map<String, Object> yamlMap = new Yaml().load(in);
-            Config config = ConfigFactory.parseMap(yamlMap != null ? yamlMap : Map.of()).resolve();
-            logger.info("Loaded config from classpath ({})", CONFIG_RESOURCE);
-            return config;
-        } catch (Exception e) {
-            logger.error("Failed to load config from classpath", e);
-            return ConfigFactory.empty();
-        }
-    }
-
     private void onFileChanged() {
         lastModified = 0;
     }
 
     @Override
     public void close() throws IOException {
-        if (fileWatcher != null) {
-            fileWatcher.close();
-            logger.info("DynamicConfig closed.");
-        }
+        fileWatcher.close();
+        logger.info("DynamicConfig closed.");
     }
 }
