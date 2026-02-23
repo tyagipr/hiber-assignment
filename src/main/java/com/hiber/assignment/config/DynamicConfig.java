@@ -49,7 +49,7 @@ public class DynamicConfig implements java.io.Closeable {
      * Creates DynamicConfig by searching for config.yaml.
      */
     public static DynamicConfig create() {
-        for (String[] pair : new String[][]{{".", "config.yaml"}, {"config", "config.yaml"}, {"target/classes", "config.yaml"}, {"src/main/resources", "config.yaml"}}) {
+        for (String[] pair : new String[][]{{"config", "config.yaml"}}) {
             File f = new File(pair[0], pair[1]);
             if (f.exists()) {
                 logger.info("Using external config from {}", f.getAbsolutePath());
